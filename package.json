@@ -11,5 +11,9 @@
   "license": "CC0-1.0",
   "devDependencies": {
     "electron": "^13.1.5"
+  },
+  "dependencies": {
+    "md5-file": "^5.0.0",
+    "osudb": "^2.0.0"
   }
 }
