@@ -1,2 +1,3 @@
-# osu-collections-manager
-App to manage maps and collections in osu!
+##osu! collections manager
+
+An app to control your maps and collections in osu! game!
