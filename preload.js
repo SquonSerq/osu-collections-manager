@@ -22,12 +22,7 @@ window.addEventListener('DOMContentLoaded', () => {
       divDiff = document.createElement("div")
       divDiff.innerHTML = "<p class='diff'>"+diffName+"</p>"
       divMap.appendChild(divDiff)
-
     })
-
-
     document.getElementById("maps").appendChild(divMap)
   }
-
-
 })
