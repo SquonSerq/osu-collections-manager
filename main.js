@@ -24,12 +24,56 @@ function createWindow () {
 
 function readCollection(path, configName){
   osuDb.readCollectionDB(path+"/collection.db", (data)=>{
-    fs.writeFileSync('./'+configName+'.json', JSON.stringify(data))
+    fs.writeFileSync('./'+configName, JSON.stringify(data))
   })
 }
 
 function getKeyByValue(object, value) {
   return Object.keys(object).find(key => object[key] === value);
+}
+
+function loadMaps(osuPath, jsonResPath = "./tmp/"){
+
+  osuRegExp = /.*\.osu/
+  osuSongsDir = fs.readdirSync(osuPath+"/Songs")
+
+  songsHashes = new Object()
+  diffsHashes = new Object()
+
+  for(const [key, songDirectory] of Object.entries(osuSongsDir)){
+    if (fs.lstatSync(osuPath+"\\Songs\\"+songDirectory).isDirectory()){
+      songDirPath = fs.readdirSync(osuPath+"\\Songs\\"+songDirectory)
+      diffsArray = []
+      for(const [k, fileName] of Object.entries(songDirPath)){
+        if (osuRegExp.test(fileName)){
+          tmpHash = new Object()
+          tmpHash[fileName.substring(0, fileName.length-4)] = md5File.sync(osuPath+"\\Songs\\"+songDirectory+"\\"+fileName) 
+          diffsArray.push(tmpHash)
+          diffsHashes[fileName.substring(0, fileName.length-4)] = md5File.sync(osuPath+"\\Songs\\"+songDirectory+"\\"+fileName) 
+          console.log(fileName)
+        }
+      }
+      songsHashes[songDirectory] = diffsArray
+    }
+  }
+  fs.writeFileSync(jsonResPath+"songsHashes.json", JSON.stringify(songsHashes))
+  fs.writeFileSync(jsonResPath+"diffsHashes.json", JSON.stringify(diffsHashes))
+}
+
+function comapareCollectionHashes(jsonCollectionDataPath, jsonDiffsHashesPath, jsonResPath = "./tmp/collections.json"){
+  collectionWithNames = new Object()
+  collectionData = JSON.parse(fs.readFileSync(jsonCollectionDataPath))
+  diffsHashes = JSON.parse(fs.readFileSync(jsonDiffsHashesPath))
+
+  for (const [categoryName, categoryHashes] of Object.entries(collectionData)){
+    songNamesArray = []
+    categoryHashes.forEach(element => {
+      songNamesArray.push(getKeyByValue(diffsHashes, element))
+    });
+    collectionWithNames[categoryName] = songNamesArray
+  }
+  console.log(collectionWithNames)
+  fs.writeFileSync(jsonResPath, JSON.stringify(collectionWithNames))
 }
 
 // This method will be called when Electron has finished
@@ -50,7 +94,7 @@ app.whenReady().then(() => {
 // explicitly with Cmd + Q.
 app.on('window-all-closed', function () {
   if (!fs.existsSync(tmpFilesDir)){
-    fs.rmdirSync(tmpFilesDir, { recursive: true })
+    fs.rmSync(tmpFilesDir, { recursive: true, force: true })
   }
   if (process.platform !== 'darwin') app.quit()
 })
@@ -64,44 +108,5 @@ osuPath = configLoad["osu-path"]
 collectionFileName = configLoad["collections-file-name"]
 
 readCollection(osuPath, tmpFilesDir+"/"+collectionFileName)
-
-osuRegExp = /.*\.osu/
-osuSongsDir = fs.readdirSync(osuPath+"/Songs")
-songsHashes = new Object()
-diffsHashes = new Object()
-
-for(const [key, songDirectory] of Object.entries(osuSongsDir)){
-  if (fs.lstatSync(osuPath+"\\Songs\\"+songDirectory).isDirectory()){
-    songDirPath = fs.readdirSync(osuPath+"\\Songs\\"+songDirectory)
-    diffsArray = []
-    for(const [k, fileName] of Object.entries(songDirPath)){
-      if (osuRegExp.test(fileName)){
-        tmpHash = new Object()
-        tmpHash[fileName.substring(0, fileName.length-4)] = md5File.sync(osuPath+"\\Songs\\"+songDirectory+"\\"+fileName) 
-        diffsArray.push(tmpHash)
-        diffsHashes[fileName.substring(0, fileName.length-4)] = md5File.sync(osuPath+"\\Songs\\"+songDirectory+"\\"+fileName) 
-        console.log(fileName)
-      }
-    }
-    songsHashes[songDirectory] = diffsArray
-  }
-}
-
-collectionWithNames = new Object()
-collectionData = JSON.parse(fs.readFileSync(tmpFilesDir+"/"+collectionFileName+".json"))
-
-for (const [categoryName, categoryHashes] of Object.entries(collectionData)){
-  songNamesArray = []
-  categoryHashes.forEach(element => {
-    songNamesArray.push(getKeyByValue(diffsHashes, element))
-  });
-  collectionWithNames[categoryName] = songNamesArray
-}
-
-console.log(collectionWithNames)
-
-
-fs.writeFileSync(tmpFilesDir+"/"+"songsHashes.json", JSON.stringify(songsHashes))
-fs.writeFileSync(tmpFilesDir+"/"+"diffsHashes.json", JSON.stringify(diffsHashes))
-
-
+loadMaps(osuPath)
+comapareCollectionHashes("./tmp/"+collectionFileName, "./tmp/diffsHashes.json")
